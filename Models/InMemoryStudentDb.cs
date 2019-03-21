@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using Backend.Model;
+using Backend.Model.Services;
 
 namespace TestingDb
 {
@@ -16,10 +18,11 @@ namespace TestingDb
             _students = students;
         }
 
-        public (InMemoryStudentDb db, int id) AddStudent(Student student)
+        public (InMemoryStudentDb db, Student student) AddStudent(string name)
         {
             var id = GetAllStudents().Max(s => s.Id) + 1;
-            return (Add(new Student(id, student.Name)), id);
+            var student = new Student(id, name);
+            return (Add(student), student);
         }
 
         public InMemoryStudentDb AddStudents(IEnumerable<Student> students)
@@ -78,7 +81,7 @@ namespace TestingDb
         };
 
         public static IEnumerable<Student> Initial => _initialStudents;
-        public static InMemoryStudentDb InitialDb =>
+        public static InMemoryStudentDb InitialDb =
             InMemoryStudentDb.Empty.AddStudents(Initial);
     }
 }

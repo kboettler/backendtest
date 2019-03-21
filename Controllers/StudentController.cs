@@ -2,44 +2,53 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Backend.Model;
+using Backend.Model.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using TestingDb;
 
-namespace TodoApi.Controllers
+namespace Backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class StudentController : ControllerBase
     {
-        private static InMemoryStudentDb _db = StudentDbHelper.InitialDb;
+        private readonly StudentReader _students;
+        private readonly StudentWriter _writer;
+
+        public StudentController(StudentReader students, StudentWriter writer)
+        {
+            _students = students;
+            _writer = writer;
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetStudents(
             [FromQuery] string name)
         {
-            var students = await Task.Run(() => _db.GetAllStudents());
-
             if (name != null && name.Any())
             {
-                var filtered = await Task.Run(() => students.Where(s =>
-                    s.Name.Contains(name, StringComparison.OrdinalIgnoreCase)));
+                var filtered = await Task.Run(() => _students.SearchStudents(name));
                 return Ok(filtered);
             }
-
-            return Ok(students);
+            else
+            {
+                var students = await Task.Run(() => _students.AllStudents);
+                return Ok(students);
+            }
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetStudent(
             [BindRequired] [FromRoute] int id)
         {
-            if (!_db.StudentExists(id))
+            if (!_students.StudentExists(id))
             {
                 return NotFound(id);
             }
 
-            var student = await Task.Run(() => _db.GetStudent(id));
+            var student = await Task.Run(() => _students.GetStudent(id));
             return Ok(student);
         }
 
@@ -53,22 +62,21 @@ namespace TodoApi.Controllers
                 return BadRequest();
             }
 
-            var result = await Task.Run(() => _db.AddStudent(student));
-            _db = result.db;
+            var result = await Task.Run(() => _writer.CreateStudent(student.Name));
 
-            return CreatedAtAction(nameof(AddStudent), new { id = result.id }, new Student(result.id, student.Name));
+            return CreatedAtAction(nameof(AddStudent), new { id = result.Id }, result);
         }
 
         [HttpPut]
         public async Task<IActionResult> UpdateStudent(
             [BindRequired] [FromBody] Student student)
         {
-            if (!_db.StudentExists(student.Id))
+            if (!_students.StudentExists(student.Id))
             {
                 return NotFound(student);
             }
 
-            await Task.Run(() => _db = _db.UpdateStudent(student));
+            await Task.Run(() => _writer.UpdateStudent(student));
 
             return Ok(student);
         }
@@ -77,12 +85,12 @@ namespace TodoApi.Controllers
         public async Task<IActionResult> RemoveStudent(
             [FromRoute] int id)
         {
-            if (!_db.StudentExists(id))
+            if (!_students.StudentExists(id))
             {
                 return NotFound(id);
             }
 
-            await Task.Run(() => _db = _db.RemoveStudent(id));
+            await Task.Run(() => _writer.RemoveStudent(id));
             return NoContent();
         }
     }
