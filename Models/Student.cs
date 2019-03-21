@@ -1,13 +1,19 @@
+using System;
 using Backend.Model.Services;
 
 namespace Backend.Model
 {
     public class Student
     {
-        public int Id { get; }
+        public Guid Id { get; }
         public string Name { get; }
 
-        public Student(int id, string name)
+        public Student(string name)
+            : this(Guid.NewGuid(), name)
+        {
+        }
+
+        public Student(Guid id, string name)
         {
             Id = id;
             Name = name;
@@ -35,10 +41,10 @@ namespace Backend.Model
 
     public class UpdateStudent : ICommand
     {
-        public int Id { get; }
+        public Guid Id { get; }
         public string Name { get; }
 
-        public UpdateStudent(int id, string name)
+        public UpdateStudent(Guid id, string name)
         {
             Id = id;
             Name = name;

@@ -41,7 +41,7 @@ namespace Backend.Controllers
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetStudent(
-            [BindRequired] [FromRoute] int id)
+            [BindRequired] [FromRoute] Guid id)
         {
             if (!_students.StudentExists(id))
             {
@@ -83,7 +83,7 @@ namespace Backend.Controllers
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> RemoveStudent(
-            [FromRoute] int id)
+            [FromRoute] Guid id)
         {
             if (!_students.StudentExists(id))
             {

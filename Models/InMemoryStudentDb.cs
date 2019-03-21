@@ -9,19 +9,18 @@ namespace TestingDb
 {
     public class InMemoryStudentDb
     {
-        public static InMemoryStudentDb Empty => new InMemoryStudentDb(ImmutableDictionary<int, Student>.Empty);
+        public static InMemoryStudentDb Empty => new InMemoryStudentDb(ImmutableDictionary<Guid, Student>.Empty);
 
-        private readonly ImmutableDictionary<int, Student> _students;
+        private readonly ImmutableDictionary<Guid, Student> _students;
 
-        private InMemoryStudentDb(ImmutableDictionary<int, Student> students)
+        private InMemoryStudentDb(ImmutableDictionary<Guid, Student> students)
         {
             _students = students;
         }
 
         public (InMemoryStudentDb db, Student student) AddStudent(string name)
         {
-            var id = GetAllStudents().Max(s => s.Id) + 1;
-            var student = new Student(id, name);
+            var student = new Student(name);
             return (Add(student), student);
         }
 
@@ -31,12 +30,12 @@ namespace TestingDb
                 Add(students.First()).AddStudents(students.Skip(1));
         }
 
-        public InMemoryStudentDb RemoveStudent(int id)
+        public InMemoryStudentDb RemoveStudent(Guid id)
         {
             return new InMemoryStudentDb(_students.Remove(id));
         }
 
-        public Student GetStudent(int id)
+        public Student GetStudent(Guid id)
         {
             return _students.TryGetValue(id, out Student student) ? 
                 student : throw new ArgumentException("The specified student did not exist");
@@ -53,7 +52,7 @@ namespace TestingDb
                 .Add(student);
         }
 
-        public bool StudentExists(int id)
+        public bool StudentExists(Guid id)
         {
             return _students.ContainsKey(id);
         }
@@ -68,16 +67,16 @@ namespace TestingDb
     {
         private static readonly Student[] _initialStudents = new[]
         {
-            new Student(11, "Mr. Nice"),
-            new Student(12, "Narco"),
-            new Student(13, "Bombasto"),
-            new Student(14, "Celeritas"),
-            new Student(15, "Magneta"),
-            new Student(16, "RubberMan"),
-            new Student(17, "Dynama"),
-            new Student(18, "Dr IQ"),
-            new Student(19, "Magma"),
-            new Student(20, "Tornado"),
+            new Student("Mr. Nice"),
+            new Student("Narco"),
+            new Student("Bombasto"),
+            new Student("Celeritas"),
+            new Student("Magneta"),
+            new Student("RubberMan"),
+            new Student("Dynama"),
+            new Student("Dr IQ"),
+            new Student("Magma"),
+            new Student("Tornado"),
         };
 
         public static IEnumerable<Student> Initial => _initialStudents;

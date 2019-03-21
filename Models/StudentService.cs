@@ -32,7 +32,7 @@ namespace Backend.Model.Services
             _eventService.RecordEvent(new StudentUpdated(student));
         }
 
-        public void RemoveStudent(int id)
+        public void RemoveStudent(Guid id)
         {
             var student = _db.GetStudent(id);
             _db = _db.RemoveStudent(id);
@@ -65,11 +65,11 @@ namespace Backend.Model.Services
 
     public class StudentReader : IEventService
     {
-        private ImmutableDictionary<int, Student> _students = ImmutableDictionary<int, Student>.Empty;
+        private ImmutableDictionary<Guid, Student> _students = ImmutableDictionary<Guid, Student>.Empty;
 
         public IEnumerable<Student> AllStudents => _students.Values;
 
-        public Student GetStudent(int id)
+        public Student GetStudent(Guid id)
         {
             return _students[id];
         }
@@ -79,7 +79,7 @@ namespace Backend.Model.Services
             return _students.Values.Where(s => s.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
         }
 
-        public bool StudentExists(int id)
+        public bool StudentExists(Guid id)
         {
             return _students.ContainsKey(id);
         }
