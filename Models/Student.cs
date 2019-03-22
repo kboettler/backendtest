@@ -1,5 +1,6 @@
 using System;
 using Backend.Model.Services;
+using Newtonsoft.Json;
 
 namespace Backend.Model
 {
@@ -18,6 +19,13 @@ namespace Backend.Model
             Id = id;
             Name = name;
         }
+
+        [JsonConstructor]
+        public Student(string id, string name)
+            : this(Guid.Parse(id), name)
+        {
+
+        }
     }
 
     public class CreateStudent : ICommand
@@ -31,11 +39,12 @@ namespace Backend.Model
 
     public class StudentCreated : IEvent
     {
+        public string Type => nameof(StudentCreated);
         public Student Value { get; }
 
-        public StudentCreated(Student student)
+        public StudentCreated(Student value)
         {
-            Value = student;
+            Value = value;
         }
     }
 
@@ -53,28 +62,30 @@ namespace Backend.Model
 
     public class StudentUpdated : IEvent
     {
+        public string Type => nameof(StudentUpdated);
         public Student Value { get; }
-        public StudentUpdated(Student student)
+        public StudentUpdated(Student value)
         {
-            Value = student;
+            Value = value;
         }
     }
 
     public class RemoveStudent : ICommand
     {
         public Student Value { get; }
-        public RemoveStudent(Student student)
+        public RemoveStudent(Student value)
         {
-            Value = student;
+            Value = value;
         }
     }
 
     public class StudentRemoved : IEvent
     {
-        public Student Value { get; }
-        public StudentRemoved(Student student)
+        public string Type => nameof(StudentRemoved);
+        public Guid Id { get; }
+        public StudentRemoved(Guid id)
         {
-            Value = student;
+            Id = id;
         }
     }
 }

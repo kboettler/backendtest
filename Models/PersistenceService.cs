@@ -1,27 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Backend.Model.Services
 {
-    public class EventListenerCollection : IEventService
-    {
-        private readonly ImmutableList<IEventService> _listeners;
-
-        public EventListenerCollection(IEnumerable<IEventService> listeners)
-        {
-            _listeners = ImmutableList<IEventService>.Empty.AddRange(listeners);
-        }
-
-        public void RecordEvent(IEvent e)
-        {
-            foreach (var listener in _listeners)
-            {
-                listener.RecordEvent(e);
-            }
-        }
-    }
-
     public class CommandListenerCollection : ICommandService
     {
         private readonly ImmutableList<ICommandService> _listeners;
@@ -31,11 +15,11 @@ namespace Backend.Model.Services
             _listeners = ImmutableList<ICommandService>.Empty.AddRange(listeners);
         }
 
-        public void IssueCommand(ICommand command)
+        public async Task IssueCommand(ICommand command)
         {
-            foreach (var listener in _listeners)
+            foreach (var listener in _listeners.AsParallel())
             {
-                listener.IssueCommand(command);
+                await listener.IssueCommand(command);
             }
         }
     }

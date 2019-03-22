@@ -3,44 +3,49 @@ using Backend.Model.Services;
 using TestingDb;
 using Microsoft.Extensions.DependencyInjection;
 using Backend.Model;
+using EventStore.ClientAPI;
+using EventStore.ClientAPI.SystemData;
+using System.Threading.Tasks;
 
-namespace Microsoft.Extensions.DependencyInjection{
-    public static class Initialization{
+namespace Microsoft.Extensions.DependencyInjection
+{
+    public static class Initialization
+    {
         public static void InitializeStudents(this IServiceCollection services)
         {
-            services.AddTransient<InMemoryStudentDb, InMemoryStudentDb>(p => StudentDbHelper.InitialDb);
-            services.AddSingleton<StudentReader, StudentReader>();
-            services.AddSingleton<IEventService, EventListenerCollection>(CreateEventListeners);
+            var credentials = new UserCredentials("writer", "ez1234");
+
+            services.AddSingleton<IEventStoreConnection, IEventStoreConnection>(p => ConnectToDataStore().Result);
+
+            services.AddSingleton<StudentReader, StudentReader>(p => CreateReader(p, credentials));
 
             services.AddSingleton<StudentWriter, StudentWriter>();
             services.AddTransient<ICommandService, CommandListenerCollection>(CreateCommandListeners);
         }
 
-        private static EventListenerCollection CreateEventListeners(IServiceProvider provider)
+        private async static Task<IEventStoreConnection> ConnectToDataStore()
         {
-            var studentReader = provider.GetService<StudentReader>();
+            var conn = EventStoreConnection.Create(new Uri("tcp://writer:ez1234@localhost:1113"));
+            await conn.ConnectAsync();
+            return conn;
+        }
 
-            var collection = new EventListenerCollection(new[]{studentReader});
-            Hydrate(provider, collection);
+        private static StudentReader CreateReader(IServiceProvider provider, UserCredentials credentials)
+        {
+            var store = provider.GetService<IEventStoreConnection>();
 
-            return collection;
+            var reader = new StudentReader();
+            store.SubscribeToStreamFrom(Streams.StudentStream, StreamCheckpoint.StreamStart, CatchUpSubscriptionSettings.Default, (_, e) => reader.RecordEvent(e));
+
+            return reader;
         }
 
         private static CommandListenerCollection CreateCommandListeners(IServiceProvider provider)
         {
             var studentWriter = provider.GetService<StudentWriter>();
 
-            var collection = new CommandListenerCollection(new[]{studentWriter});
+            var collection = new CommandListenerCollection(new[] { studentWriter });
             return collection;
-        }
-
-        private static void Hydrate(IServiceProvider provider, EventListenerCollection collection)
-        {
-            var db = provider.GetService<InMemoryStudentDb>();
-            foreach(var student in db.GetAllStudents())
-            {
-                collection.RecordEvent(new StudentCreated(student));
-            }
         }
     }
 }

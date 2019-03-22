@@ -2,72 +2,76 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using EventStore.ClientAPI;
+using EventStore.ClientAPI.SystemData;
+using Newtonsoft.Json;
 using TestingDb;
 
 namespace Backend.Model.Services
 {
     public class StudentWriter : ICommandService
     {
-        private InMemoryStudentDb _db = InMemoryStudentDb.Empty;
-        private readonly IEventService _eventService;
+        private readonly IEventStoreConnection _store;
 
-        public StudentWriter(IEventService eventService, InMemoryStudentDb initial)
+        public StudentWriter(IEventStoreConnection store)
         {
-            _eventService = eventService;
-            _db = initial;
+            _store = store;
         }
 
-        public Student CreateStudent(string name)
+        public async Task<Student> CreateStudent(string name)
         {
-            var result = _db.AddStudent(name);
-            _db = result.db;
-            _eventService.RecordEvent(new StudentCreated(result.student));
+            var created = new StudentCreated(new Student(name));
 
-            return result.student;
+            await _store.AppendToStreamAsync(Streams.StudentStream, ExpectedVersion.Any, created.GenerateData());
+            return created.Value;
         }
 
-        public void UpdateStudent(Student student)
+        public async Task UpdateStudent(Student student)
         {
-            _db = _db.UpdateStudent(student);
-            _eventService.RecordEvent(new StudentUpdated(student));
+            var updated = new StudentUpdated(student);
+            await _store.AppendToStreamAsync(Streams.StudentStream, ExpectedVersion.Any, updated.GenerateData());
         }
 
-        public void RemoveStudent(Guid id)
+        public async Task RemoveStudent(Guid id)
         {
-            var student = _db.GetStudent(id);
-            _db = _db.RemoveStudent(id);
-
-            _eventService.RecordEvent(new StudentRemoved(student));
+            var removed = new StudentRemoved(id);
+            await _store.AppendToStreamAsync(Streams.StudentStream, ExpectedVersion.Any, removed.GenerateData());
         }
 
-        public void IssueCommand(ICommand c)
+        public async Task IssueCommand(ICommand c)
         {
             switch (c)
             {
                 case CreateStudent create:
                     {
-                        CreateStudent(create.Name);
+                        await CreateStudent(create.Name);
                         break;
                     }
                 case UpdateStudent update:  
                     {
-                        UpdateStudent(new Student(update.Id, update.Name));
+                        await UpdateStudent(new Student(update.Id, update.Name));
                         break;
                     }
                 case RemoveStudent remove:
                     {
-                        RemoveStudent(remove.Value.Id);
+                        await RemoveStudent(remove.Value.Id);
                         break;
                     }
             }
         }
     }
 
-    public class StudentReader : IEventService
+    public class StudentReader : IViewService
     {
         private ImmutableDictionary<Guid, Student> _students = ImmutableDictionary<Guid, Student>.Empty;
-
         public IEnumerable<Student> AllStudents => _students.Values;
+
+        public StudentReader()
+        {
+            
+        }
 
         public Student GetStudent(Guid id)
         {
@@ -84,26 +88,30 @@ namespace Backend.Model.Services
             return _students.ContainsKey(id);
         }
 
-        public void RecordEvent(IEvent e)
+        public void RecordEvent(ResolvedEvent resolved)
         {
-            switch (e)
+            var data = Encoding.UTF8.GetString(resolved.Event.Data);
+            
+            switch(resolved.Event.EventType)
             {
-                case StudentCreated created:
-                    {
-                        _students = _students.Add(created.Value.Id, created.Value);
-                        break;
-                    }
-                case StudentUpdated updated:
-                    {
-                        _students = _students.Remove(updated.Value.Id)
-                            .Add(updated.Value.Id, updated.Value);
-                        break;
-                    }
-                case StudentRemoved removed:
-                    {
-                        _students = _students.Remove(removed.Value.Id);
-                        break;
-                    }
+                case nameof(StudentCreated):
+                {
+                    var created = JsonConvert.DeserializeObject<StudentCreated>(data);
+                    _students = _students.Add(created.Value.Id, created.Value);
+                    break;
+                }
+                case nameof(StudentUpdated):
+                {
+                    var updated = JsonConvert.DeserializeObject<StudentUpdated>(data);
+                    _students = _students.Remove(updated.Value.Id).Add(updated.Value.Id, updated.Value);
+                    break;
+                }
+                case nameof(StudentRemoved):
+                {
+                    var removed = JsonConvert.DeserializeObject<StudentRemoved>(data);
+                    _students = _students.Remove(removed.Id);
+                    break;
+                }
             }
         }
     }
