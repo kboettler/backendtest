@@ -31,23 +31,11 @@ namespace Backend.Model.Services
 
     public static class ServiceHelpers
     {
-        // private static readonly Lazy<ImmutableDictionary<string, Type>> _eventTypes = 
-        //     new Lazy<ImmutableDictionary<string, Type>>(() =>
-        //         {
-        //             return Assembly.GetExecutingAssembly()
-        //                 .GetExportedTypes()
-        //                 .Where(t => typeof(IEvent).IsAssignableFrom(t) && 
-        //                     t.IsAbstract == false)
-        //                     .ToImmutableDictionary(t => t.Name);
-        //         });
-
         public static EventData GenerateData(this IEvent e)
         {
             var data = JsonConvert.SerializeObject(e);
             return new EventData(Guid.NewGuid(), e.Type(), true, Encoding.UTF8.GetBytes(data), new byte[]{});
         }
-
-        //public static 
 
         public static string Type(this IEvent e)
         {

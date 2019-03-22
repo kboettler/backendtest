@@ -1,6 +1,5 @@
 using System;
 using Backend.Model.Services;
-using TestingDb;
 using Microsoft.Extensions.DependencyInjection;
 using Backend.Model;
 using EventStore.ClientAPI;
@@ -13,13 +12,11 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         public static void InitializeStudents(this IServiceCollection services)
         {
-            var credentials = new UserCredentials("writer", "ez1234");
-
             services.AddSingleton<IEventStoreConnection, IEventStoreConnection>(p => ConnectToDataStore().Result);
 
-            services.AddSingleton<StudentReader, StudentReader>(p => CreateReader(p, credentials));
+            services.AddSingleton<EmployeeView, EmployeeView>(p => CreateReader(p));
 
-            services.AddSingleton<StudentWriter, StudentWriter>();
+            services.AddSingleton<EmployeeWriter, EmployeeWriter>();
             services.AddTransient<ICommandService, CommandListenerCollection>(CreateCommandListeners);
         }
 
@@ -30,19 +27,20 @@ namespace Microsoft.Extensions.DependencyInjection
             return conn;
         }
 
-        private static StudentReader CreateReader(IServiceProvider provider, UserCredentials credentials)
+        private static EmployeeView CreateReader(IServiceProvider provider)
         {
             var store = provider.GetService<IEventStoreConnection>();
 
-            var reader = new StudentReader();
-            store.SubscribeToStreamFrom(Streams.StudentStream, StreamCheckpoint.StreamStart, CatchUpSubscriptionSettings.Default, (_, e) => reader.RecordEvent(e));
+            var reader = new EmployeeView();
+            store.SubscribeToStreamFrom(
+                Streams.Employee, StreamCheckpoint.StreamStart, CatchUpSubscriptionSettings.Default, (_, e) => reader.RecordEvent(e));
 
             return reader;
         }
 
         private static CommandListenerCollection CreateCommandListeners(IServiceProvider provider)
         {
-            var studentWriter = provider.GetService<StudentWriter>();
+            var studentWriter = provider.GetService<EmployeeWriter>();
 
             var collection = new CommandListenerCollection(new[] { studentWriter });
             return collection;

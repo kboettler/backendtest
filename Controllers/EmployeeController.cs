@@ -6,55 +6,54 @@ using Backend.Model;
 using Backend.Model.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
-using TestingDb;
 
 namespace Backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class StudentController : ControllerBase
+    public class EmployeeController : ControllerBase
     {
-        private readonly StudentReader _students;
-        private readonly StudentWriter _writer;
+        private readonly EmployeeView _employees;
+        private readonly EmployeeWriter _writer;
 
-        public StudentController(StudentReader students, StudentWriter writer)
+        public EmployeeController(EmployeeView students, EmployeeWriter writer)
         {
-            _students = students;
+            _employees = students;
             _writer = writer;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetStudents(
+        public async Task<IActionResult> GetEmployees(
             [FromQuery] string name)
         {
             if (name != null && name.Any())
             {
-                var filtered = await Task.Run(() => _students.SearchStudents(name));
+                var filtered = await Task.Run(() => _employees.SearchEmployees(name));
                 return Ok(filtered);
             }
             else
             {
-                var students = await Task.Run(() => _students.AllStudents);
+                var students = await Task.Run(() => _employees.AllStudents);
                 return Ok(students);
             }
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetStudent(
-            [BindRequired] [FromRoute] Guid id)
+        public async Task<IActionResult> GetEmployee(
+            [BindRequired] [FromRoute] int id)
         {
-            if (!_students.StudentExists(id))
+            if (!_employees.EmployeeExists(id))
             {
                 return NotFound(id);
             }
 
-            var student = await Task.Run(() => _students.GetStudent(id));
+            var student = await Task.Run(() => _employees.GetEmployee(id));
             return Ok(student);
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddStudent(
-            [BindRequired] [FromBody] Student student)
+        public async Task<IActionResult> AddEmployee(
+            [BindRequired] [FromBody] Employee student)
         {
             if (student.Name == null ||
                 !student.Name.Any())
@@ -62,35 +61,35 @@ namespace Backend.Controllers
                 return BadRequest();
             }
 
-            var result = await Task.Run(() => _writer.CreateStudent(student.Name));
+            var result = await _writer.CreateEmployee(student.Name);
 
-            return CreatedAtAction(nameof(AddStudent), new { id = result.Id }, result);
+            return CreatedAtAction(nameof(AddEmployee), new { id = result.Id }, result);
         }
 
         [HttpPut]
         public async Task<IActionResult> UpdateStudent(
-            [BindRequired] [FromBody] Student student)
+            [BindRequired] [FromBody] Employee student)
         {
-            if (!_students.StudentExists(student.Id))
+            if (!_employees.EmployeeExists(student.Id))
             {
                 return NotFound(student);
             }
 
-            await Task.Run(() => _writer.UpdateStudent(student));
+            await Task.Run(() => _writer.UpdateEmployee(student));
 
             return Ok(student);
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> RemoveStudent(
-            [FromRoute] Guid id)
+            [FromRoute] int id)
         {
-            if (!_students.StudentExists(id))
+            if (!_employees.EmployeeExists(id))
             {
                 return NotFound(id);
             }
 
-            await Task.Run(() => _writer.RemoveStudent(id));
+            await Task.Run(() => _writer.RemoveEmployee(id));
             return NoContent();
         }
     }
