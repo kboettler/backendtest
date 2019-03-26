@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using EventStore.ClientAPI;
@@ -10,16 +9,17 @@ namespace Backend.Model.Services
 {
     public class EmployeeView : IViewService
     {
-        private ImmutableDictionary<int, Employee> _employees = ImmutableDictionary<int, Employee>.Empty;
-        public IEnumerable<Employee> AllStudents => _employees.Values;
-
-        public EmployeeView()
-        {
-
-        }
+        private readonly IDictionary<int, Employee> _employees 
+            = new Dictionary<int, Employee>();
+        public IEnumerable<Employee> AllEmployees => _employees.Values;
 
         public Employee GetEmployee(int id)
         {
+            if(!_employees.ContainsKey(id))
+            {
+                throw new ArgumentException("The specified employee did not exist");
+            }
+
             return _employees[id];
         }
 
@@ -42,19 +42,20 @@ namespace Backend.Model.Services
                 case nameof(EmployeeCreated):
                     {
                         var created = JsonConvert.DeserializeObject<EmployeeCreated>(data);
-                        _employees = _employees.Add(created.Value.Id, created.Value);
+                        _employees.Add(created.Value.Id, created.Value);
                         break;
                     }
                 case nameof(EmployeeUpdated):
                     {
                         var updated = JsonConvert.DeserializeObject<EmployeeUpdated>(data);
-                        _employees = _employees.Remove(updated.Value.Id).Add(updated.Value.Id, updated.Value);
+                        _employees.Remove(updated.Value.Id);
+                        _employees.Add(updated.Value.Id, updated.Value);
                         break;
                     }
                 case nameof(EmployeeRemoved):
                     {
                         var removed = JsonConvert.DeserializeObject<EmployeeRemoved>(data);
-                        _employees = _employees.Remove(removed.Id);
+                        _employees.Remove(removed.Id);
                         break;
                     }
             }

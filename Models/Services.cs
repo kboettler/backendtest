@@ -15,16 +15,6 @@ namespace Backend.Model.Services
         void RecordEvent(ResolvedEvent resolved);
     }
 
-    public interface ICommandService
-    {
-        Task IssueCommand(ICommand command);
-    }
-
-    public interface ICommand
-    {
-
-    }
-
     public interface IEvent
     {
     }

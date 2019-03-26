@@ -14,10 +14,11 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             services.AddSingleton<IEventStoreConnection, IEventStoreConnection>(p => ConnectToDataStore().Result);
 
-            services.AddSingleton<EmployeeView, EmployeeView>(p => CreateReader(p));
-
+            services.AddSingleton<EmployeeView, EmployeeView>(CreateEmployeeView);
             services.AddSingleton<EmployeeWriter, EmployeeWriter>();
-            services.AddTransient<ICommandService, CommandListenerCollection>(CreateCommandListeners);
+
+            services.AddSingleton<UtoView, UtoView>(CreateRequestView);
+            services.AddSingleton<UtoWriter, UtoWriter>();
         }
 
         private async static Task<IEventStoreConnection> ConnectToDataStore()
@@ -27,7 +28,7 @@ namespace Microsoft.Extensions.DependencyInjection
             return conn;
         }
 
-        private static EmployeeView CreateReader(IServiceProvider provider)
+        private static EmployeeView CreateEmployeeView(IServiceProvider provider)
         {
             var store = provider.GetService<IEventStoreConnection>();
 
@@ -38,12 +39,15 @@ namespace Microsoft.Extensions.DependencyInjection
             return reader;
         }
 
-        private static CommandListenerCollection CreateCommandListeners(IServiceProvider provider)
+        private static UtoView CreateRequestView(IServiceProvider provider)
         {
-            var studentWriter = provider.GetService<EmployeeWriter>();
+            var store = provider.GetService<IEventStoreConnection>();
 
-            var collection = new CommandListenerCollection(new[] { studentWriter });
-            return collection;
+            var reader = new UtoView();
+            store.SubscribeToStreamFrom(
+                Streams.UtoRequests, StreamCheckpoint.StreamStart, CatchUpSubscriptionSettings.Default, (_, e) => reader.RecordEvent(e));
+            
+            return reader;
         }
     }
 }

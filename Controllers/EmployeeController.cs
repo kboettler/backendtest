@@ -16,9 +16,9 @@ namespace Backend.Controllers
         private readonly EmployeeView _employees;
         private readonly EmployeeWriter _writer;
 
-        public EmployeeController(EmployeeView students, EmployeeWriter writer)
+        public EmployeeController(EmployeeView employees, EmployeeWriter writer)
         {
-            _employees = students;
+            _employees = employees;
             _writer = writer;
         }
 
@@ -33,7 +33,7 @@ namespace Backend.Controllers
             }
             else
             {
-                var students = await Task.Run(() => _employees.AllStudents);
+                var students = await Task.Run(() => _employees.AllEmployees);
                 return Ok(students);
             }
         }
@@ -90,7 +90,7 @@ namespace Backend.Controllers
             }
 
             await Task.Run(() => _writer.RemoveEmployee(id));
-            return NoContent();
+            return Ok();
         }
     }
 }

@@ -10,7 +10,7 @@ using Newtonsoft.Json;
 
 namespace Backend.Model.Services
 {
-    public class EmployeeWriter : ICommandService
+    public class EmployeeWriter
     {
         private readonly IEventStoreConnection _store;
         private int _maxId;
@@ -33,35 +33,13 @@ namespace Backend.Model.Services
         public async Task UpdateEmployee(Employee student)
         {
             var updated = new EmployeeUpdated(student);
-            await _store.AppendToStreamAsync(Streams.Employee, ExpectedVersion.Any, updated.GenerateData());
+            await _store.AppendToStreamAsync(Streams.Employee, ExpectedVersion.StreamExists, updated.GenerateData());
         }
 
         public async Task RemoveEmployee(int id)
         {
             var removed = new EmployeeRemoved(id);
-            await _store.AppendToStreamAsync(Streams.Employee, ExpectedVersion.Any, removed.GenerateData());
-        }
-
-        public async Task IssueCommand(ICommand c)
-        {
-            switch (c)
-            {
-                case CreateEmployee create:
-                    {
-                        await CreateEmployee(create.Name);
-                        break;
-                    }
-                case UpdateEmployee update:
-                    {
-                        await UpdateEmployee(new Employee(update.Id, update.Name));
-                        break;
-                    }
-                case RemoveEmployee remove:
-                    {
-                        await RemoveEmployee(remove.Value.Id);
-                        break;
-                    }
-            }
+            await _store.AppendToStreamAsync(Streams.Employee, ExpectedVersion.StreamExists, removed.GenerateData());
         }
 
         private void RecordEvent(ResolvedEvent resolved)

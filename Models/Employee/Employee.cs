@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace Backend.Model
 {
-    public class Employee
+    public class Employee : IEquatable<Employee>
     {
         public int Id { get; }
         public string Name { get; }
@@ -14,20 +14,20 @@ namespace Backend.Model
             Id = id;
             Name = name;
         }
-    }
 
-    public class CreateEmployee : ICommand
-    {
-        public string Name { get; }
-        public CreateEmployee(string name)
+        public bool Equals(Employee other)
         {
-            Name = name;
+            return other.Id == Id;
+        }
+
+        public override int GetHashCode()
+        {
+            return Id.GetHashCode();
         }
     }
 
     public class EmployeeCreated : IEvent
     {
-        public string Type => nameof(EmployeeCreated);
         public Employee Value { get; }
 
         public EmployeeCreated(Employee value)
@@ -36,21 +36,8 @@ namespace Backend.Model
         }
     }
 
-    public class UpdateEmployee : ICommand
-    {
-        public int Id { get; }
-        public string Name { get; }
-
-        public UpdateEmployee(int id, string name)
-        {
-            Id = id;
-            Name = name;
-        }
-    }
-
     public class EmployeeUpdated : IEvent
     {
-        public string Type => nameof(EmployeeUpdated);
         public Employee Value { get; }
         public EmployeeUpdated(Employee value)
         {
@@ -58,18 +45,8 @@ namespace Backend.Model
         }
     }
 
-    public class RemoveEmployee : ICommand
-    {
-        public Employee Value { get; }
-        public RemoveEmployee(Employee value)
-        {
-            Value = value;
-        }
-    }
-
     public class EmployeeRemoved : IEvent
     {
-        public string Type => nameof(EmployeeRemoved);
         public int Id { get; }
         public EmployeeRemoved(int id)
         {
