@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Backend.Model;
 using Backend.Model.Services;
@@ -34,7 +35,11 @@ namespace Backend.Controllers
             var employee = await Task.Run(() => _employees.GetEmployee(employeeId));
             var requests = await Task.Run(() => _requests.GetRequests(employee));
 
-            return Ok(requests);
+            return Ok(requests.Select(r => new {
+                Id = r.Id,
+                EmployeeId = r.Requester.Id,
+                Day = r.Day,
+                Hours = r.Hours}));
         }
 
         [HttpGet("{requestId}")]
