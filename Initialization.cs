@@ -23,9 +23,43 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private async static Task<IEventStoreConnection> ConnectToDataStore()
         {
-            var conn = EventStoreConnection.Create(new Uri("tcp://writer:ez1234@localhost:1113"));
+            var connectionString = "ConnectTo=tcp://writer:ez1234@192.168.0.3:1113; HeartBeatTimeout=500";
+
+            Console.WriteLine($"Connecting to event store at {connectionString}");
+
+            var connSettings = ConnectionSettings.Create().UseConsoleLogger().EnableVerboseLogging();
+
+            var conn = EventStoreConnection.Create(connectionString, connSettings);
+
+            conn.Connected += OnConnected;
+            conn.Disconnected += OnDisconnect;
+            conn.ErrorOccurred += OnError;
+            conn.Reconnecting += OnReconnect;
+
             await conn.ConnectAsync();
+
+            Console.WriteLine($"Got Here: {conn.ConnectionName}");
             return conn;
+        }
+
+        private static void OnReconnect(object sender, ClientReconnectingEventArgs e)
+        {
+            Console.WriteLine($"Attempting to reconnect to event store");
+        }
+
+        private static void OnError(object sender, ClientErrorEventArgs e)
+        {
+            Console.WriteLine($"An error occurred: {e.Exception.Message}");
+        }
+
+        private static void OnDisconnect(object sender, ClientConnectionEventArgs e)
+        {
+            Console.Write("Disconnected from event store");
+        }
+
+        private static void OnConnected(object sender, ClientConnectionEventArgs e)
+        {
+            Console.WriteLine("Connected Successfully");
         }
 
         private static EmployeeView CreateEmployeeView(IServiceProvider provider)
@@ -48,6 +82,39 @@ namespace Microsoft.Extensions.DependencyInjection
                 Streams.UtoRequests, StreamCheckpoint.StreamStart, CatchUpSubscriptionSettings.Default, (_, e) => reader.RecordEvent(e));
             
             return reader;
+        }
+
+        private class ConsoleLogger : ILogger
+        {
+            public void Debug(string format, params object[] args)
+            {
+                Console.WriteLine(format, args);
+            }
+
+            public void Debug(Exception ex, string format, params object[] args)
+            {
+                Console.WriteLine(format, args);
+            }
+
+            public void Error(string format, params object[] args)
+            {
+                Console.WriteLine(format, args);
+            }
+
+            public void Error(Exception ex, string format, params object[] args)
+            {
+                Console.WriteLine(format, args);
+            }
+
+            public void Info(string format, params object[] args)
+            {
+                Console.WriteLine(format, args);
+            }
+
+            public void Info(Exception ex, string format, params object[] args)
+            {
+                Console.WriteLine(format, args);
+            }
         }
     }
 }

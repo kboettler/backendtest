@@ -33,8 +33,8 @@ namespace Backend.Controllers
             }
             else
             {
-                var students = await Task.Run(() => _employees.AllEmployees);
-                return Ok(students);
+                var employees = await Task.Run(() => _employees.AllEmployees);
+                return Ok(employees);
             }
         }
 
@@ -47,37 +47,37 @@ namespace Backend.Controllers
                 return NotFound(id);
             }
 
-            var student = await Task.Run(() => _employees.GetEmployee(id));
-            return Ok(student);
+            var employee = await Task.Run(() => _employees.GetEmployee(id));
+            return Ok(employee);
         }
 
         [HttpPost]
         public async Task<IActionResult> AddEmployee(
-            [BindRequired] [FromBody] Employee student)
+            [BindRequired] [FromBody] Employee employee)
         {
-            if (student.Name == null ||
-                !student.Name.Any())
+            if (employee.Name == null ||
+                !employee.Name.Any())
             {
                 return BadRequest();
             }
 
-            var result = await _writer.CreateEmployee(student.Name);
+            var result = await _writer.CreateEmployee(employee.Name);
 
             return CreatedAtAction(nameof(AddEmployee), new { id = result.Id }, result);
         }
 
         [HttpPut]
         public async Task<IActionResult> UpdateStudent(
-            [BindRequired] [FromBody] Employee student)
+            [BindRequired] [FromBody] Employee employee)
         {
-            if (!_employees.EmployeeExists(student.Id))
+            if (!_employees.EmployeeExists(employee.Id))
             {
-                return NotFound(student);
+                return NotFound(employee);
             }
 
-            await Task.Run(() => _writer.UpdateEmployee(student));
+            await Task.Run(() => _writer.UpdateEmployee(employee));
 
-            return Ok(student);
+            return Ok(employee);
         }
 
         [HttpDelete("{id}")]
