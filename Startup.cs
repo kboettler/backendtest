@@ -38,7 +38,7 @@ namespace Backend
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
-            services.InitializeStudents();
+            services.InitializeStudents(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -54,8 +54,6 @@ namespace Backend
             }
 
             app.UseCors(AllowAll);
-
-            //app.UseHttpsRedirection();
             app.UseMvc();
         }
     }

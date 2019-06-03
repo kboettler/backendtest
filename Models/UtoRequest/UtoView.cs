@@ -2,12 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using EventStore.ClientAPI;
 using Newtonsoft.Json;
 
 namespace Backend.Model.Services
 {
-    public class UtoView : IViewService
+    public class UtoView : IListener
     {
         private readonly IDictionary<int, (UtoRequest request, RequestStatus status)> _requests 
             = new Dictionary<int, (UtoRequest, RequestStatus)>();
@@ -44,27 +43,25 @@ namespace Backend.Model.Services
             return _requests[request.Id].status;
         }
 
-        public void RecordEvent(ResolvedEvent resolved)
+        public void RecordEvent(StoredEvent stored)
         {
-            var data = Encoding.UTF8.GetString(resolved.Event.Data);
-
-            switch (resolved.Event.EventType)
+            switch (stored.EventName)
             {
                 case nameof(RequestCreated):
                     {
-                        var created = JsonConvert.DeserializeObject<RequestCreated>(data);
+                        var created = stored.ToEvent<RequestCreated>();
                         _requests.Add(created.Value.Id, (created.Value, RequestStatus.Pending));
                         break;
                     }
                 case nameof(RequestRemoved):
                     {
-                        var removed = JsonConvert.DeserializeObject<RequestRemoved>(data);
+                        var removed = stored.ToEvent<RequestRemoved>();
                         _requests.Remove(removed.Id);
                         break;
                     }
                 case nameof(RequestDenied):
                     {
-                        var denied = JsonConvert.DeserializeObject<RequestDenied>(data);
+                        var denied = stored.ToEvent<RequestDenied>();
                         var request = _requests[denied.Id].request;
 
                         _requests[denied.Id] = (request, RequestStatus.Denied);
@@ -72,7 +69,7 @@ namespace Backend.Model.Services
                     }
                 case nameof(RequestApproved):
                     {
-                        var approved = JsonConvert.DeserializeObject<RequestApproved>(data);
+                        var approved = stored.ToEvent<RequestApproved>();
                         var request = _requests[approved.Id].request;
 
                         _requests[approved.Id] = (request, RequestStatus.Approved);

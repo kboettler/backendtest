@@ -42,12 +42,12 @@ namespace Backend.Controllers
         public async Task<IActionResult> GetEmployee(
             [BindRequired] [FromRoute] int id)
         {
-            if (!_employees.EmployeeExists(id))
+            if (!_employees.EmployeeExists((uint)id))
             {
                 return NotFound(id);
             }
 
-            var employee = await Task.Run(() => _employees.GetEmployee(id));
+            var employee = await Task.Run(() => _employees.GetEmployee((uint)id));
             return Ok(employee);
         }
 
@@ -84,12 +84,12 @@ namespace Backend.Controllers
         public async Task<IActionResult> RemoveStudent(
             [FromRoute] int id)
         {
-            if (!_employees.EmployeeExists(id))
+            if (!_employees.EmployeeExists((uint)id))
             {
                 return NotFound(id);
             }
 
-            await Task.Run(() => _writer.RemoveEmployee(id));
+            await Task.Run(() => _writer.RemoveEmployee((uint)id));
             return Ok();
         }
     }

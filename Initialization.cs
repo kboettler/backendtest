@@ -5,116 +5,79 @@ using Backend.Model;
 using EventStore.ClientAPI;
 using EventStore.ClientAPI.SystemData;
 using System.Threading.Tasks;
+using MongoDB.Driver;
+using Microsoft.Extensions.Configuration;
+using System.Linq;
+using System.Reflection;
+using MongoDB.Bson.Serialization;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
     public static class Initialization
     {
-        public static void InitializeStudents(this IServiceCollection services)
+        public static void InitializeStudents(this IServiceCollection services, IConfiguration config)
         {
-            services.AddSingleton<IEventStoreConnection, IEventStoreConnection>(p => ConnectToDataStore().Result);
+            services.AddSingleton<MongoConfiguration, MongoConfiguration>(p => MongoConfiguration.Create(config));
+            services.AddTransient<IMongoDatabase, IMongoDatabase>(ConnectToDataStore);
 
-            services.AddSingleton<EmployeeView, EmployeeView>(CreateEmployeeView);
-            services.AddSingleton<EmployeeWriter, EmployeeWriter>();
+            services.AddSingleton<EmployeeView, EmployeeView>(p => CreateListener<EmployeeView>(p, Streams.Employee));
+            services.AddSingleton<UtoView, UtoView>(p => CreateListener<UtoView>(p, Streams.UtoRequests));
 
-            services.AddSingleton<UtoView, UtoView>(CreateRequestView);
-            services.AddSingleton<UtoWriter, UtoWriter>();
+            services.AddSingleton<IListener, ListenerCollection>(CreateListenerCollection);
+
+            services.AddTransient<EventReader, EventReader>(p => new EventReader(p.GetService<IMongoDatabase>()));
+            services.AddTransient<EventWriter, EventWriter>(p => new EventWriter(p.GetService<IMongoDatabase>(), p.GetService<IListener>()));
+
+            services.AddSingleton<EmployeeWriter, EmployeeWriter>(CreateEmployeeWriter);
+            services.AddSingleton<UtoWriter, UtoWriter>(CreateUtoWriter);
         }
 
-        private async static Task<IEventStoreConnection> ConnectToDataStore()
+
+        private static EmployeeWriter CreateEmployeeWriter(IServiceProvider p)
         {
-            var connectionString = "ConnectTo=tcp://writer:ez1234@192.168.0.3:1113; HeartBeatTimeout=500";
-
-            Console.WriteLine($"Connecting to event store at {connectionString}");
-
-            var connSettings = ConnectionSettings.Create().UseConsoleLogger().EnableVerboseLogging();
-
-            var conn = EventStoreConnection.Create(connectionString, connSettings);
-
-            conn.Connected += OnConnected;
-            conn.Disconnected += OnDisconnect;
-            conn.ErrorOccurred += OnError;
-            conn.Reconnecting += OnReconnect;
-
-            await conn.ConnectAsync();
-
-            Console.WriteLine($"Got Here: {conn.ConnectionName}");
-            return conn;
+            return EmployeeWriter.Create(p.GetService<EventReader>, p.GetService<EventWriter>);
         }
 
-        private static void OnReconnect(object sender, ClientReconnectingEventArgs e)
+        private static UtoWriter CreateUtoWriter(IServiceProvider p)
         {
-            Console.WriteLine($"Attempting to reconnect to event store");
+            return UtoWriter.Create(p.GetService<EventReader>, p.GetService<EventWriter>);
         }
 
-        private static void OnError(object sender, ClientErrorEventArgs e)
+        private static IMongoDatabase ConnectToDataStore(IServiceProvider p)
         {
-            Console.WriteLine($"An error occurred: {e.Exception.Message}");
+            var config = p.GetService<MongoConfiguration>();
+
+            var client = new MongoClient(config.ConnectionString);
+            var db = client.GetDatabase(config.Database);
+
+            return db;
         }
 
-        private static void OnDisconnect(object sender, ClientConnectionEventArgs e)
+        private static T CreateListener<T>(IServiceProvider p, string collection)
+            where T : IListener, new()
         {
-            Console.Write("Disconnected from event store");
+            var eReader = p.GetService<EventReader>();
+
+            var view = new T();
+            foreach(var e in eReader.GetOrderedCollection(collection))
+            {
+                view.RecordEvent(e);
+            }
+
+            return view;
         }
 
-        private static void OnConnected(object sender, ClientConnectionEventArgs e)
+        private static ListenerCollection CreateListenerCollection(IServiceProvider p)
         {
-            Console.WriteLine("Connected Successfully");
-        }
-
-        private static EmployeeView CreateEmployeeView(IServiceProvider provider)
-        {
-            var store = provider.GetService<IEventStoreConnection>();
-
-            var reader = new EmployeeView();
-            store.SubscribeToStreamFrom(
-                Streams.Employee, StreamCheckpoint.StreamStart, CatchUpSubscriptionSettings.Default, (_, e) => reader.RecordEvent(e));
-
-            return reader;
-        }
-
-        private static UtoView CreateRequestView(IServiceProvider provider)
-        {
-            var store = provider.GetService<IEventStoreConnection>();
-
-            var reader = new UtoView();
-            store.SubscribeToStreamFrom(
-                Streams.UtoRequests, StreamCheckpoint.StreamStart, CatchUpSubscriptionSettings.Default, (_, e) => reader.RecordEvent(e));
+            var type = typeof(IListener);
+            var types = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(s => s.GetTypes())
+                .Where(t => type.IsAssignableFrom(t) && !t.IsInterface && !t.IsAssignableFrom(typeof(ListenerCollection)));
             
-            return reader;
-        }
+            var services = types.Select(t => p.GetService(t) as IListener)
+                .Where(s => s != null);
 
-        private class ConsoleLogger : ILogger
-        {
-            public void Debug(string format, params object[] args)
-            {
-                Console.WriteLine(format, args);
-            }
-
-            public void Debug(Exception ex, string format, params object[] args)
-            {
-                Console.WriteLine(format, args);
-            }
-
-            public void Error(string format, params object[] args)
-            {
-                Console.WriteLine(format, args);
-            }
-
-            public void Error(Exception ex, string format, params object[] args)
-            {
-                Console.WriteLine(format, args);
-            }
-
-            public void Info(string format, params object[] args)
-            {
-                Console.WriteLine(format, args);
-            }
-
-            public void Info(Exception ex, string format, params object[] args)
-            {
-                Console.WriteLine(format, args);
-            }
+            return new ListenerCollection(services);
         }
     }
 }

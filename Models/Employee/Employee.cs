@@ -6,10 +6,10 @@ namespace Backend.Model
 {
     public class Employee : IEquatable<Employee>
     {
-        public int Id { get; }
+        public uint Id { get; }
         public string Name { get; }
 
-        public Employee(int id, string name)
+        public Employee(uint id, string name)
         {
             Id = id;
             Name = name;
@@ -47,8 +47,8 @@ namespace Backend.Model
 
     public class EmployeeRemoved : IEvent
     {
-        public int Id { get; }
-        public EmployeeRemoved(int id)
+        public uint Id { get; }
+        public EmployeeRemoved(uint id)
         {
             Id = id;
         }

@@ -2,18 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using EventStore.ClientAPI;
 using Newtonsoft.Json;
 
 namespace Backend.Model.Services
 {
-    public class EmployeeView : IViewService
+    public class EmployeeView : IListener
     {
-        private readonly IDictionary<int, Employee> _employees 
-            = new Dictionary<int, Employee>();
+        private readonly IDictionary<uint, Employee> _employees 
+            = new Dictionary<uint, Employee>();
         public IEnumerable<Employee> AllEmployees => _employees.Values;
 
-        public Employee GetEmployee(int id)
+        public Employee GetEmployee(uint id)
         {
             if(!_employees.ContainsKey(id))
             {
@@ -28,33 +27,31 @@ namespace Backend.Model.Services
             return _employees.Values.Where(s => s.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
         }
 
-        public bool EmployeeExists(int id)
+        public bool EmployeeExists(uint id)
         {
             return _employees.ContainsKey(id);
         }
 
-        public void RecordEvent(ResolvedEvent resolved)
+        public void RecordEvent(StoredEvent stored)
         {
-            var data = Encoding.UTF8.GetString(resolved.Event.Data);
-
-            switch (resolved.Event.EventType)
+            switch (stored.EventName)
             {
                 case nameof(EmployeeCreated):
                     {
-                        var created = JsonConvert.DeserializeObject<EmployeeCreated>(data);
+                        var created = stored.ToEvent<EmployeeCreated>();
                         _employees.Add(created.Value.Id, created.Value);
                         break;
                     }
                 case nameof(EmployeeUpdated):
                     {
-                        var updated = JsonConvert.DeserializeObject<EmployeeUpdated>(data);
+                        var updated = stored.ToEvent<EmployeeUpdated>();
                         _employees.Remove(updated.Value.Id);
                         _employees.Add(updated.Value.Id, updated.Value);
                         break;
                     }
                 case nameof(EmployeeRemoved):
                     {
-                        var removed = JsonConvert.DeserializeObject<EmployeeRemoved>(data);
+                        var removed = stored.ToEvent<EmployeeRemoved>();
                         _employees.Remove(removed.Id);
                         break;
                     }

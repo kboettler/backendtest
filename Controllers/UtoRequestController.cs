@@ -27,12 +27,12 @@ namespace Backend.Controllers
         public async Task<IActionResult> GetRequests(
             [BindRequired] [FromQuery] int employeeId)
         {
-            if (!_employees.EmployeeExists(employeeId))
+            if (!_employees.EmployeeExists((uint)employeeId))
             {
                 return NotFound(employeeId);
             }
 
-            var employee = await Task.Run(() => _employees.GetEmployee(employeeId));
+            var employee = await Task.Run(() => _employees.GetEmployee((uint)employeeId));
             var requests = await Task.Run(() => _requests.GetRequests(employee));
 
             return Ok(requests.Select(r => new {
@@ -61,7 +61,7 @@ namespace Backend.Controllers
         public async Task<IActionResult> NewRequest(
             [BindRequired] [FromBody] UtoRequestMetadata metadata)
         {
-            if (!_employees.EmployeeExists(metadata.EmployeeId))
+            if (!_employees.EmployeeExists((uint)metadata.EmployeeId))
             {
                 return NotFound(metadata.EmployeeId);
             }
@@ -70,7 +70,7 @@ namespace Backend.Controllers
                 return BadRequest();
             }
 
-            var employee = await Task.Run(() => _employees.GetEmployee(metadata.EmployeeId));
+            var employee = await Task.Run(() => _employees.GetEmployee((uint)metadata.EmployeeId));
             var request = await Task.Run(() => _writer.CreateRequest(employee, metadata.Day, metadata.Hours == 0 ? 8 : metadata.Hours));
 
             return CreatedAtAction(nameof(NewRequest), new { id = request.Id }, request);
